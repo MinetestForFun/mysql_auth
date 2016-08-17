@@ -89,7 +89,7 @@ return {
       user = 'minetest',
       pass = 'BQy77wK$Um6es3Bi($iZ*w3N',
       db = 'minetest'
-    }
+    },
     tables = {
       auths = {
         name = 'skyblock_auths'
@@ -103,10 +103,10 @@ return {
 
 `minetest.conf`:
 ```
-mysql_auth.db.user = 'minetest'
-mysql_auth.db.pass = 'BQy77wK$Um6es3Bi($iZ*w3N'
-mysql_auth.db.db = 'minetest'
-mysql_auth.db.tables.auth.name = 'skyblock_auths'
+mysql_auth.db.user = minetest
+mysql_auth.db.pass = BQy77wK$Um6es3Bi($iZ*w3N
+mysql_auth.db.db = minetest
+mysql_auth.db.tables.auth.name = skyblock_auths
 ```
 
 # License
