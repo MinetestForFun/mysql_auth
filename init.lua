@@ -4,7 +4,9 @@ local modpath = minetest.get_modpath(modname)
 local thismod = {}
 _G[modname] = thismod
 
-if not minetest.setting_get(modname .. '.enable_singleplayer') and minetest.is_singleplayer() then
+local singleplayer = minetest.is_singleplayer() -- Caching is OK since you can't open a game to
+-- multiplayer unless you restart it.
+if not minetest.setting_get(modname .. '.enable_singleplayer') and singleplayer then
   core.log('action', modname .. ": Not adding auth handler because of singleplayer game")
   return
 end
@@ -195,26 +197,37 @@ do
   local S = tables.auths.schema
   local get_auth_stmt = conn:prepare('SELECT ' .. S.password .. ',' .. S.privs .. ',' ..
     S.lastlogin .. ' FROM ' .. tables.auths.name .. ' WHERE ' .. S.username .. '=?')
+  thismod.get_auth_stmt = get_auth_stmt
   local get_auth_params = get_auth_stmt:bind_params({S.username_type})
+  thismod.get_auth_params = get_auth_params
   local get_auth_results = get_auth_stmt:bind_result({S.password_type, S.privs_type,
     S.lastlogin_type})
+  thismod.get_auth_results = get_auth_results
 
   local create_auth_stmt = conn:prepare('INSERT INTO ' .. tables.auths.name .. '(' .. S.username ..
     ',' .. S.password .. ',' .. S.privs .. ') VALUES (?,?,?)')
+  thismod.create_auth_stmt = create_auth_stmt
   local create_auth_params = create_auth_stmt:bind_params({S.username_type, S.password_type,
     S.privs_type})
+  thismod.create_auth_params = create_auth_params
 
   local set_password_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.password ..
     '=? WHERE ' .. S.username .. '=?')
+  thismod.set_password_stmt = set_password_stmt
   local set_password_params = set_password_stmt:bind_params({S.password_type, S.username_type})
+  thismod.set_password_params = set_password_params
 
   local set_privileges_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.privs ..
       '=? WHERE ' .. S.username .. '=?')
+  thismod.set_privileges_stmt = set_privileges_stmt
   local set_privileges_params = set_privileges_stmt:bind_params({S.privs_type, S.username_type})
+  thismod.set_privileges_params = set_privileges_params
 
   local record_login_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' ..
     S.lastlogin .. '=? WHERE ' .. S.username .. '=?')
+  thismod.record_login_stmt = record_login_stmt
   local record_login_params = record_login_stmt:bind_params({S.lastlogin_type, S.username_type})
+  thismod.record_login_params = record_login_params
 
   thismod.auth_handler = {
     get_auth = function(name)
@@ -225,16 +238,30 @@ do
         minetest.log('error', modname .. ': get_auth failed: ' .. msg)
         return nil
       end
+      get_auth_stmt:store_result()
       if not get_auth_stmt:fetch() then
         minetest.log('error', modname .. ': get_auth failed: get_auth_stmt:fetch() returned false')
         return nil
       end
+      while get_auth_stmt:fetch() do end
       local password, privs_str, lastlogin = get_auth_results:get(1), get_auth_results:get(2),
         get_auth_results:get(3)
-      get_auth_stmt:free_result()
+      local admin = (name == minetest.setting_get("name"))
+      local privs
+      if singleplayer or admin then
+        privs = {}
+        -- If admin, grant all privs, if singleplayer, grant all privs w/ give_to_singleplayer
+        for priv, def in pairs(core.registered_privileges) do
+          if (singleplayer and def.give_to_singleplayer) or admin then
+            privs[priv] = true
+          end
+        end
+      else
+        privs = minetest.string_to_privs(privs_str)
+      end
       return {
         password = password,
-        privileges = minetest.string_to_privs(privs_str),
+        privileges = privs,
         last_login = lastlogin
       }
     end,
@@ -250,7 +277,7 @@ do
         minetest.log('error', modname .. ': create_auth failed: ' .. msg)
         return false
       end
-      return true
+      return (create_auth_stmt:affected_rows() == 1)
     end,
     set_password = function(name, password)
       assert(type(name) == 'string')
@@ -267,7 +294,7 @@ do
           return false
         end
       end
-      return true
+      return (set_password_stmt:affected_rows() == 1)
     end,
     set_privileges = function(name, privileges)
       assert(type(name) == 'string')
@@ -279,8 +306,8 @@ do
         minetest.log('error', modname .. ': set_privileges failed: ' .. msg)
         return false
       end
-      minetest.notify_authentication_modified(name)
-      return true
+      --minetest.notify_authentication_modified(name)
+      return (set_privileges_stmt:affected_rows() == 1)
     end,
     reload = function()
       return true
@@ -294,7 +321,7 @@ do
         minetest.log('error', modname .. ': record_login failed: ' .. msg)
         return false
       end
-      return true
+      return (record_login_stmt:affected_rows() == 1)
     end
   }
 end
@@ -304,6 +331,7 @@ minetest.log('action', modname .. ": Registered auth handler")
 
 minetest.register_on_shutdown(function()
   if thismod.conn then
+    thismod.get_auth_stmt:free_result()
     thismod.conn:close()
   end
 end)
