@@ -277,13 +277,18 @@ do
         minetest.log('error', modname .. ': create_auth failed: ' .. msg)
         return false
       end
-      return (create_auth_stmt:affected_rows() == 1)
+      if create_auth_stmt:affected_rows() ~= 1 then
+        minetest.log('error', modname .. ": create_auth failed: affected row count is " ..
+          create_auth_stmt:affected_rows() .. ", expected 1")
+        return false
+      end
+      return true
     end,
     set_password = function(name, password)
       assert(type(name) == 'string')
       assert(type(password) == 'string')
       if not thismod.auth_handler.get_auth(name) then
-        thismod.auth_handler.create_auth(name, password, ' because set_password was requested')
+        return thismod.auth_handler.create_auth(name, password, ' because set_password was requested')
       else
         minetest.log('info', modname .. " setting password of player '"..name.."'")
         set_password_params:set(1, password)
@@ -293,8 +298,13 @@ do
           minetest.log('error', modname .. ': set_password failed: ' .. msg)
           return false
         end
+        if set_password_stmt:affected_rows() ~= 1 then
+          minetest.log('error', modname .. ": set_password failed: affected row count is " ..
+            set_password_stmt:affected_rows() .. ", expected 1")
+          return false
+        end
+        return true
       end
-      return (set_password_stmt:affected_rows() == 1)
     end,
     set_privileges = function(name, privileges)
       assert(type(name) == 'string')
@@ -303,11 +313,16 @@ do
       set_privileges_params:set(2, name)
       local success, msg = pcall(function () set_privileges_stmt:exec() end)
       if not success then
-        minetest.log('error', modname .. ': set_privileges failed: ' .. msg)
+        minetest.log('error', modname .. ": set_privileges failed: " .. msg)
         return false
       end
-      --minetest.notify_authentication_modified(name)
-      return (set_privileges_stmt:affected_rows() == 1)
+      minetest.notify_authentication_modified(name)
+      if set_privileges_stmt:affected_rows() ~= 1 then
+        minetest.log('error', modname .. ": set_privileges failed: affected row count is " ..
+          set_privileges_stmt:affected_rows() .. ", expected 1")
+        return false
+      end
+      return true
     end,
     reload = function()
       return true
@@ -318,10 +333,15 @@ do
       record_login_params:set(2, name)
       local success, msg = pcall(function () record_login_stmt:exec() end)
       if not success then
-        minetest.log('error', modname .. ': record_login failed: ' .. msg)
+        minetest.log('error', modname .. ": record_login failed: " .. msg)
         return false
       end
-      return (record_login_stmt:affected_rows() == 1)
+      if record_login_stmt:affected_rows() ~= 1 then
+        minetest.log('error', modname .. ": record_login failed: affected row count is " ..
+          record_login_stmt:affected_rows() .. ", expected 1")
+        return false
+      end
+      return true
     end
   }
 end
