@@ -238,15 +238,18 @@ do
       get_auth_params:set(1, name)
       local success, msg = pcall(function () get_auth_stmt:exec() end)
       if not success then
-        minetest.log('error', modname .. ': get_auth failed: ' .. msg)
+        minetest.log('error', modname .. ": get_auth failed: " .. msg)
         return nil
       end
       get_auth_stmt:store_result()
       if not get_auth_stmt:fetch() then
-        minetest.log('error', modname .. ': get_auth failed: get_auth_stmt:fetch() returned false')
+        -- No such auth row exists
         return nil
       end
-      while get_auth_stmt:fetch() do end
+      while get_auth_stmt:fetch() do
+        minetest.log('warning', modname .. ": get_auth: multiples lines were returned for '" ..
+          name .. "'")
+      end
       local password, privs_str, lastlogin = get_auth_results:get(1), get_auth_results:get(2),
         get_auth_results:get(3)
       local admin = (name == minetest.setting_get("name"))
@@ -277,7 +280,7 @@ do
       create_auth_params:set(3, minetest.setting_get("default_privs"))
       local success, msg = pcall(function () create_auth_stmt:exec() end)
       if not success then
-        minetest.log('error', modname .. ': create_auth failed: ' .. msg)
+        minetest.log('error', modname .. ": create_auth failed: " .. msg)
         return false
       end
       if create_auth_stmt:affected_rows() ~= 1 then
@@ -291,14 +294,14 @@ do
       assert(type(name) == 'string')
       assert(type(password) == 'string')
       if not thismod.auth_handler.get_auth(name) then
-        return thismod.auth_handler.create_auth(name, password, ' because set_password was requested')
+        return thismod.auth_handler.create_auth(name, password, " because set_password was requested")
       else
-        minetest.log('info', modname .. " setting password of player '"..name.."'")
+        minetest.log('info', modname .. " setting password of player '" .. name .. "'")
         set_password_params:set(1, password)
         set_password_params:set(2, name)
         local success, msg = pcall(function () set_password_stmt:exec() end)
         if not success then
-          minetest.log('error', modname .. ': set_password failed: ' .. msg)
+          minetest.log('error', modname .. ": set_password failed: " .. msg)
           return false
         end
         if set_password_stmt:affected_rows() ~= 1 then
