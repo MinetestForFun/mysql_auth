@@ -78,8 +78,11 @@ do
       if not file then
         error(modname .. ' failed to load specified config file at ' .. cfgfile)
       end
-      local cfg = minetest.deserialize(file:read('*a'))
+      local cfg, msg = minetest.deserialize(file:read('*a'))
       file:close()
+      if not cfg then
+        error(modname .. ' failed to parse specified config file at ' .. cfgfile .. ': ' .. msg)
+      end
       get = function (name)
         if type(name) ~= 'string' or name == '' then
           return nil
