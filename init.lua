@@ -239,7 +239,7 @@ do
     get_auth = function(name)
       assert(type(name) == 'string')
       get_auth_params:set(1, name)
-      local success, msg = pcall(function () get_auth_stmt:exec() end)
+      local success, msg = pcall(get_auth_stmt.exec, get_auth_stmt)
       if not success then
         minetest.log('error', modname .. ": get_auth failed: " .. msg)
         return nil
@@ -281,7 +281,7 @@ do
       create_auth_params:set(1, name)
       create_auth_params:set(2, password)
       create_auth_params:set(3, minetest.setting_get("default_privs"))
-      local success, msg = pcall(function () create_auth_stmt:exec() end)
+      local success, msg = pcall(create_auth_stmt.exec, create_auth_stmt)
       if not success then
         minetest.log('error', modname .. ": create_auth failed: " .. msg)
         return false
@@ -302,7 +302,7 @@ do
         minetest.log('info', modname .. " setting password of player '" .. name .. "'")
         set_password_params:set(1, password)
         set_password_params:set(2, name)
-        local success, msg = pcall(function () set_password_stmt:exec() end)
+        local success, msg = pcall(set_password_stmt.exec, set_password_stmt)
         if not success then
           minetest.log('error', modname .. ": set_password failed: " .. msg)
           return false
@@ -320,7 +320,7 @@ do
       assert(type(privileges) == 'table')
       set_privileges_params:set(1, minetest.privs_to_string(privileges))
       set_privileges_params:set(2, name)
-      local success, msg = pcall(function () set_privileges_stmt:exec() end)
+      local success, msg = pcall(set_privileges_stmt.exec, set_privileges_stmt)
       if not success then
         minetest.log('error', modname .. ": set_privileges failed: " .. msg)
         return false
@@ -340,7 +340,7 @@ do
       assert(type(name) == 'string')
       record_login_params:set(1, math.floor(os.time()))
       record_login_params:set(2, name)
-      local success, msg = pcall(function () record_login_stmt:exec() end)
+      local success, msg = pcall(record_login_stmt.exec, record_login_stmt)
       if not success then
         minetest.log('error', modname .. ": record_login failed: " .. msg)
         return false
