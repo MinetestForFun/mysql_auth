@@ -100,27 +100,25 @@ do
     end
   end
 
-  local conn, db
+  local conn
   do
     -- MySQL API backend
     mysql.config(get('db.api'))
 
     local connopts = get('db.connopts')
-    if type(connopts) == 'table' then
-      -- User-specified connection parameter table
-      -- Only when using a config file
-      db = connopts.db
-      connopts.charset = 'utf8'
-      conn = mysql.connect(connopts)
-    elseif get('db.db') ~= nil then
-      -- Traditional connection parameters
-      local host, user, port = get('db.host') or 'localhost', get('db.user'), get('db.port')
-      local pass = get('db.pass')
-      db = get('db.db')
-      conn = mysql.connect(host, user, pass, db, 'utf8', port)
-    else
-      error(modname .. ": missing db.db parameter")
+    if (get('db.db') == nil) and (type(connopts) == 'table' and connopts.db == nil) then
+      error(modname .. ": missing database name parameter")
     end
+    if type(connopts) ~= 'table' then
+      connopts = {}
+      -- Traditional connection parameters
+      connopts.host, connopts.user, connopts.port, connopts.pass, connopts.db =
+        get('db.host') or 'localhost', get('db.user'), get('db.port'), get('db.pass'), get('db.db')
+    end
+    connopts.charset = 'utf8'
+    connopts.options = connopts.options or {}
+    connopts.options.MYSQL_OPT_RECONNECT = true
+    conn = mysql.connect(connopts)
     thismod.conn = conn
 
     -- LuaPower's MySQL interface throws an error when the connection fails, no need to check if
@@ -133,6 +131,11 @@ do
     conn:query("SET character_set_results = 'utf8', character_set_client = 'utf8'," ..
                    "character_set_connection = 'utf8', character_set_database = 'utf8'," ..
                    "character_set_server = 'utf8'")
+
+    local set = function(setting, val) conn:query('SET ' .. setting .. '=' .. val) end
+    pcall(set, 'wait_timeout', 3600)
+    pcall(set, 'autocommit', 1)
+    pcall(set, 'max_allowed_packet', 67108864)
   end
 
   local tables = {}
@@ -355,9 +358,20 @@ end
 minetest.register_authentication_handler(thismod.auth_handler)
 minetest.log('action', modname .. ": Registered auth handler")
 
+local function ping()
+  if thismod.conn then
+    if not thismod.conn:ping() then
+      minetest.log('error', modname .. ": failed to ping database")
+    end
+  end
+  minetest.after(1800, ping)
+end
+minetest.after(10, ping)
+
 minetest.register_on_shutdown(function()
   if thismod.conn then
     thismod.get_auth_stmt:free_result()
     thismod.conn:close()
+    thismod.conn = nil
   end
 end)
