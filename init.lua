@@ -211,10 +211,10 @@ do
   thismod.get_auth_results = get_auth_results
 
   local create_auth_stmt = conn:prepare('INSERT INTO ' .. tables.auths.name .. '(' .. S.username ..
-    ',' .. S.password .. ',' .. S.privs .. ') VALUES (?,?,?)')
+    ',' .. S.password .. ',' .. S.privs .. ',' .. S.lastlogin .. ') VALUES (?,?,?,?)')
   thismod.create_auth_stmt = create_auth_stmt
   local create_auth_params = create_auth_stmt:bind_params({S.username_type, S.password_type,
-    S.privs_type})
+    S.privs_type, S.lastlogin_type})
   thismod.create_auth_params = create_auth_params
 
   local set_password_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.password ..
@@ -281,6 +281,7 @@ do
       create_auth_params:set(1, name)
       create_auth_params:set(2, password)
       create_auth_params:set(3, minetest.setting_get("default_privs"))
+      create_auth_params:set(4, math.floor(os.time()))
       local success, msg = pcall(create_auth_stmt.exec, create_auth_stmt)
       if not success then
         minetest.log('error', modname .. ": create_auth failed: " .. msg)
