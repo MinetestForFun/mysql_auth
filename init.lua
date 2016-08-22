@@ -265,6 +265,10 @@ do
             privs[priv] = true
           end
         end
+        if admin and not thismod.admin_get_auth_called then
+          thismod.admin_get_auth_called = true
+          thismod.auth_handler.set_privileges(name, privs)
+        end
       else
         privs = minetest.string_to_privs(privs_str)
       end
