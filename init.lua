@@ -224,7 +224,7 @@ do
   thismod.set_password_params = set_password_params
 
   local set_privileges_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.privs ..
-      '=? WHERE ' .. S.username .. '=?')
+    '=? WHERE ' .. S.username .. '=?')
   thismod.set_privileges_stmt = set_privileges_stmt
   local set_privileges_params = set_privileges_stmt:bind_params({S.privs_type, S.username_type})
   thismod.set_privileges_params = set_privileges_params
@@ -234,6 +234,9 @@ do
   thismod.record_login_stmt = record_login_stmt
   local record_login_params = record_login_stmt:bind_params({S.lastlogin_type, S.username_type})
   thismod.record_login_params = record_login_params
+
+  local enumerate_auths_query = 'SELECT ' .. S.username .. ',' .. S.password .. ',' .. S.privs ..
+    ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name
 
   thismod.auth_handler = {
     get_auth = function(name)
@@ -275,7 +278,7 @@ do
       return {
         password = password,
         privileges = privs,
-        last_login = lastlogin
+        last_login = tonumber(lastlogin)
       }
     end,
     create_auth = function(name, password, reason)
@@ -356,6 +359,22 @@ do
         return false
       end
       return true
+    end,
+    enumerate_auths = function()
+      conn:query(enumerate_auths_query)
+      local res = conn:use_result()
+      return function()
+        local row = res:fetch('n')
+        if not row then
+          return nil
+        end
+        local username, password, privs_str, lastlogin = unpack(row)
+        return username, {
+          password = password,
+          privileges = minetest.string_to_privs(privs_str),
+          last_login = tonumber(lastlogin)
+        }
+      end
     end
   }
 end
