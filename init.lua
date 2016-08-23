@@ -400,7 +400,7 @@ do
     end,
     enumerate_auths = function()
       conn:query(enumerate_auths_query)
-      local res = conn:use_result()
+      local res = conn:store_result()
       return function()
         local row = res:fetch('n')
         if not row then
