@@ -217,6 +217,12 @@ do
     S.privs_type, S.lastlogin_type})
   thismod.create_auth_params = create_auth_params
 
+  local delete_auth_stmt = conn:prepare('DELETE FROM ' .. tables.auths.name .. ' WHERE ' ..
+    S.username .. '=?')
+  thismod.delete_auth_stmt = delete_auth_stmt
+  local delete_auth_params = delete_auth_stmt:bind_params({S.username_type})
+  thismod.delete_auth_params = delete_auth_params
+
   local set_password_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.password ..
     '=? WHERE ' .. S.username .. '=?')
   thismod.set_password_stmt = set_password_stmt
@@ -237,6 +243,7 @@ do
 
   local enumerate_auths_query = 'SELECT ' .. S.username .. ',' .. S.password .. ',' .. S.privs ..
     ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name
+  thismod.enumerate_auths_query = enumerate_auths_query
 
   thismod.auth_handler = {
     get_auth = function(name)
@@ -297,6 +304,22 @@ do
       if create_auth_stmt:affected_rows() ~= 1 then
         minetest.log('error', modname .. ": create_auth failed: affected row count is " ..
           create_auth_stmt:affected_rows() .. ", expected 1")
+        return false
+      end
+      return true
+    end,
+    delete_auth = function(name)
+      assert(type(name) == 'string')
+      minetest.log('info', modname .. " deleting player '"..name.."'")
+      delete_auth_params:set(1, name)
+      local success, msg = pcall(delete_auth_stmt.exec, delete_auth_stmt)
+      if not success then
+        minetest.log('error', modname .. ": delete_auth failed: " .. msg)
+        return false
+      end
+      if delete_auth_stmt:affected_rows() ~= 1 then
+        minetest.log('error', modname .. ": delete_auth failed: affected row count is " ..
+          delete_auth_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
