@@ -7,12 +7,15 @@ function thismod.import_auth_txt()
   local auth_file_path = minetest.get_worldpath() .. '/auth.txt'
   local create_auth_stmt = thismod.create_auth_stmt
   local create_auth_params = thismod.create_auth_params
+  local conn = thismod.conn
   local file, errmsg = io.open(auth_file_path, 'rb')
   if not file then
     minetest.log("info", modname .. ": " .. auth_file_path .. " could not be opened for reading" ..
        "(" .. errmsg .. "); no auth entries imported")
     return
   end
+  conn:query('SET autocommit=0')
+  conn:query('START TRANSACTION')
   for line in file:lines() do
     if line ~= "" then
       local fields = line:split(":", true)
@@ -36,5 +39,7 @@ function thismod.import_auth_txt()
       end
     end
   end
+  conn:query('COMMIT')
+  conn:query('SET autocommit=1')
   io.close(file)
 end
