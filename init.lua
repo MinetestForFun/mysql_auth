@@ -88,6 +88,9 @@ do
           return nil
         end
         local parts = string_splitdots(name)
+        if not parts then
+          return cfg[name]
+        end
         local tbl = cfg[parts[1]]
         for n = 2, #parts do
           if tbl == nil then
@@ -100,7 +103,7 @@ do
     end
   end
 
-  local conn
+  local conn, dbname
   do
     -- MySQL API backend
     mysql.config(get('db.api'))
@@ -119,6 +122,7 @@ do
     connopts.options = connopts.options or {}
     connopts.options.MYSQL_OPT_RECONNECT = true
     conn = mysql.connect(connopts)
+    dbname = connopts.db
     thismod.conn = conn
 
     -- LuaPower's MySQL interface throws an error when the connection fails, no need to check if
@@ -180,6 +184,7 @@ do
     end
   end
 
+  local auth_table_created
   do -- Auth table existence check and setup
     conn:query("SHOW TABLES LIKE '" .. tables.auths.name .. "'")
     local res = conn:store_result()
@@ -197,6 +202,9 @@ do
         'PRIMARY KEY (' .. S.userid .. '),' ..
         'UNIQUE (' .. S.username .. ')' ..
       ')')
+      minetest.log('action', modname .. " created table '" .. dbname .. "." .. tables.auths.name ..
+        "'")
+      auth_table_created = true
     end
   end
 
@@ -244,6 +252,13 @@ do
   local enumerate_auths_query = 'SELECT ' .. S.username .. ',' .. S.password .. ',' .. S.privs ..
     ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name
   thismod.enumerate_auths_query = enumerate_auths_query
+
+  if auth_table_created and get('import_auth_txt_on_table_create') ~= 'false' then
+    if not thismod.import_auth_txt then
+      dofile(modpath .. '/auth_txt_import.lua')
+    end
+    thismod.import_auth_txt()
+  end
 
   thismod.auth_handler = {
     get_auth = function(name)
