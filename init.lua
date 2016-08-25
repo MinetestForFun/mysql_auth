@@ -266,7 +266,7 @@ do
       get_auth_params:set(1, name)
       local success, msg = pcall(get_auth_stmt.exec, get_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": get_auth failed: " .. msg)
+        minetest.log('error', modname .. ": get_auth(" .. name .. ") failed: " .. msg)
         return nil
       end
       get_auth_stmt:store_result()
@@ -275,8 +275,8 @@ do
         return nil
       end
       while get_auth_stmt:fetch() do
-        minetest.log('warning', modname .. ": get_auth: multiples lines were returned for '" ..
-          name .. "'")
+        minetest.log('warning', modname .. ": get_auth(" .. name .. "): multiples lines were" ..
+          " returned")
       end
       local password, privs_str, lastlogin = get_auth_results:get(1), get_auth_results:get(2),
         get_auth_results:get(3)
@@ -313,12 +313,12 @@ do
       create_auth_params:set(4, math.floor(os.time()))
       local success, msg = pcall(create_auth_stmt.exec, create_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": create_auth failed: " .. msg)
+        minetest.log('error', modname .. ": create_auth(" .. name .. ") failed: " .. msg)
         return false
       end
       if create_auth_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": create_auth failed: affected row count is " ..
-          create_auth_stmt:affected_rows() .. ", expected 1")
+        minetest.log('error', modname .. ": create_auth(" .. name .. ") failed: affected row" ..
+          " count is " .. create_auth_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
@@ -329,12 +329,12 @@ do
       delete_auth_params:set(1, name)
       local success, msg = pcall(delete_auth_stmt.exec, delete_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": delete_auth failed: " .. msg)
+        minetest.log('error', modname .. ": delete_auth(" .. name .. ") failed: " .. msg)
         return false
       end
       if delete_auth_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": delete_auth failed: affected row count is " ..
-          delete_auth_stmt:affected_rows() .. ", expected 1")
+        minetest.log('error', modname .. ": delete_auth(" .. name .. ") failed: affected row" ..
+          " count is " .. delete_auth_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
@@ -350,12 +350,12 @@ do
         set_password_params:set(2, name)
         local success, msg = pcall(set_password_stmt.exec, set_password_stmt)
         if not success then
-          minetest.log('error', modname .. ": set_password failed: " .. msg)
+          minetest.log('error', modname .. ": set_password(" .. name .. ") failed: " .. msg)
           return false
         end
         if set_password_stmt:affected_rows() ~= 1 then
-          minetest.log('error', modname .. ": set_password failed: affected row count is " ..
-            set_password_stmt:affected_rows() .. ", expected 1")
+          minetest.log('error', modname .. ": set_password(" .. name .. ") failed: affected row" ..
+            " count is " .. set_password_stmt:affected_rows() .. ", expected 1")
           return false
         end
         return true
@@ -368,13 +368,13 @@ do
       set_privileges_params:set(2, name)
       local success, msg = pcall(set_privileges_stmt.exec, set_privileges_stmt)
       if not success then
-        minetest.log('error', modname .. ": set_privileges failed: " .. msg)
+        minetest.log('error', modname .. ": set_privileges(" .. name .. ") failed: " .. msg)
         return false
       end
       minetest.notify_authentication_modified(name)
       if set_privileges_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": set_privileges failed: affected row count is " ..
-          set_privileges_stmt:affected_rows() .. ", expected 1")
+        minetest.log('error', modname .. ": set_privileges(" .. name .. ") failed: affected row" ..
+          " count is " .. set_privileges_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
@@ -388,12 +388,12 @@ do
       record_login_params:set(2, name)
       local success, msg = pcall(record_login_stmt.exec, record_login_stmt)
       if not success then
-        minetest.log('error', modname .. ": record_login failed: " .. msg)
+        minetest.log('error', modname .. ": record_login(" .. name .. ") failed: " .. msg)
         return false
       end
       if record_login_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": record_login failed: affected row count is " ..
-          record_login_stmt:affected_rows() .. ", expected 1")
+        minetest.log('error', modname .. ": record_login(" .. name .. ") failed: affected row" ..
+          " count is " .. record_login_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true

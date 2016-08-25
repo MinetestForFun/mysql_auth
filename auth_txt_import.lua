@@ -4,13 +4,14 @@ local modpath = minetest.get_modpath(modname)
 local thismod = _G[modname]
 
 function thismod.import_auth_txt()
+  minetest.log('action', modname .. ": Importing auth.txt")
   local auth_file_path = minetest.get_worldpath() .. '/auth.txt'
   local create_auth_stmt = thismod.create_auth_stmt
   local create_auth_params = thismod.create_auth_params
   local conn = thismod.conn
   local file, errmsg = io.open(auth_file_path, 'rb')
   if not file then
-    minetest.log("info", modname .. ": " .. auth_file_path .. " could not be opened for reading" ..
+    minetest.log('action', modname .. ": " .. auth_file_path .. " could not be opened for reading" ..
        "(" .. errmsg .. "); no auth entries imported")
     return
   end
@@ -42,4 +43,5 @@ function thismod.import_auth_txt()
   conn:query('COMMIT')
   conn:query('SET autocommit=1')
   io.close(file)
+  minetest.log('action', modname .. ": Finished importing auth.txt")
 end
