@@ -4,6 +4,10 @@ Plug Minetest's auth mechanism into a MySQL database.
 
 # Configuration
 
+First, if mod security is enabled (`secure.enable_security = true`), this mod must be added as
+a trusted mod (in the `secure.trusted_mods` config entry). There is **no** other solution to
+make it work under mod security.
+
 By default `mysql_auth` doesn't run in singleplayer. This can be overriden by setting
 `mysql_auth.enable_singleplayer` to `true`.
 
