@@ -194,23 +194,22 @@ do
   thismod.table_exists = table_exists
 
   local auth_table_created
-  do -- Auth table existence check and setup
-    if not table_exists(tables.auths.name) then
-      -- Auth table doesn't exist, create it
-      local S = tables.auths.schema
-      conn:query('CREATE TABLE ' .. tables.auths.name .. ' (' ..
-        S.userid  .. ' ' .. S.userid_type .. ' NOT NULL AUTO_INCREMENT,' ..
-        S.username .. ' ' .. S.username_type .. ' NOT NULL,' ..
-        S.password .. ' ' .. S.password_type .. ' NOT NULL,' ..
-        S.privs .. ' ' .. S.privs_type .. ' NOT NULL,' ..
-        S.lastlogin .. ' ' .. S.lastlogin_type .. ',' ..
-        'PRIMARY KEY (' .. S.userid .. '),' ..
-        'UNIQUE (' .. S.username .. ')' ..
-      ')')
-      minetest.log('action', modname .. " created table '" .. dbname .. "." .. tables.auths.name ..
-        "'")
-      auth_table_created = true
-    end
+  -- Auth table existence check and setup
+  if not table_exists(tables.auths.name) then
+    -- Auth table doesn't exist, create it
+    local S = tables.auths.schema
+    conn:query('CREATE TABLE ' .. tables.auths.name .. ' (' ..
+      S.userid  .. ' ' .. S.userid_type .. ' NOT NULL AUTO_INCREMENT,' ..
+      S.username .. ' ' .. S.username_type .. ' NOT NULL,' ..
+      S.password .. ' ' .. S.password_type .. ' NOT NULL,' ..
+      S.privs .. ' ' .. S.privs_type .. ' NOT NULL,' ..
+      S.lastlogin .. ' ' .. S.lastlogin_type .. ',' ..
+      'PRIMARY KEY (' .. S.userid .. '),' ..
+      'UNIQUE (' .. S.username .. ')' ..
+    ')')
+    minetest.log('action', modname .. " created table '" .. dbname .. "." .. tables.auths.name ..
+      "'")
+    auth_table_created = true
   end
 
   local S = tables.auths.schema
