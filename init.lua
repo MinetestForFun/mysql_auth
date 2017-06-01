@@ -184,13 +184,18 @@ do
     end
   end
 
-  local auth_table_created
-  do -- Auth table existence check and setup
+  local function table_exists(name)
     conn:query("SHOW TABLES LIKE '" .. tables.auths.name .. "'")
     local res = conn:store_result()
     local exists = (res:row_count() ~= 0)
     res:free()
-    if not exists then
+    return exists
+  end
+  thismod.table_exists = table_exists
+
+  local auth_table_created
+  do -- Auth table existence check and setup
+    if not table_exists(tables.auths.name) then
       -- Auth table doesn't exist, create it
       local S = tables.auths.schema
       conn:query('CREATE TABLE ' .. tables.auths.name .. ' (' ..
