@@ -376,11 +376,6 @@ do
         return false
       end
       minetest.notify_authentication_modified(name)
-      if set_privileges_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": set_privileges(" .. name .. ") failed: affected row" ..
-          " count is " .. set_privileges_stmt:affected_rows() .. ", expected 1")
-        return false
-      end
       return true
     end,
     reload = function()
