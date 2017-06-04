@@ -87,12 +87,12 @@ do
   end
 
   local S = tables.auths.schema
-  local get_auth_stmt = conn:prepare('SELECT ' .. S.password .. ',' .. S.privs .. ',' ..
-    S.lastlogin .. ' FROM ' .. tables.auths.name .. ' WHERE ' .. S.username .. '=?')
+  local get_auth_stmt = conn:prepare('SELECT ' .. S.userid .. ',' .. S.password .. ',' .. S.privs ..
+    ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name .. ' WHERE ' .. S.username .. '=?')
   thismod.get_auth_stmt = get_auth_stmt
   local get_auth_params = get_auth_stmt:bind_params({S.username_type})
   thismod.get_auth_params = get_auth_params
-  local get_auth_results = get_auth_stmt:bind_result({S.password_type, S.privs_type,
+  local get_auth_results = get_auth_stmt:bind_result({S.userid_type, S.password_type, S.privs_type,
     S.lastlogin_type})
   thismod.get_auth_results = get_auth_results
 
@@ -156,8 +156,8 @@ do
         minetest.log('warning', modname .. ": get_auth(" .. name .. "): multiples lines were" ..
           " returned")
       end
-      local password, privs_str, lastlogin = get_auth_results:get(1), get_auth_results:get(2),
-        get_auth_results:get(3)
+      local userid, password, privs_str, lastlogin = get_auth_results:get(1),
+        get_auth_results:get(2), get_auth_results:get(3), get_auth_results:get(4)
       local admin = (name == minetest.setting_get("name"))
       local privs
       if singleplayer or admin then
@@ -176,6 +176,7 @@ do
         privs = minetest.string_to_privs(privs_str)
       end
       return {
+        userid = userid,
         password = password,
         privileges = privs,
         last_login = tonumber(lastlogin)
