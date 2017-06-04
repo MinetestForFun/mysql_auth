@@ -1,3 +1,0 @@
-[submodule "mysql"]
-	path = mysql
-	url = https://github.com/luapower/mysql
