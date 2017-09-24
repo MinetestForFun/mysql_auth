@@ -6,26 +6,35 @@ local thismod = {
 }
 _G[modname] = thismod
 
+local LogI = mysql_base.mklog('action', modname)
+local LogE = mysql_base.mklog('error', modname)
+
 if not mysql_base.enabled then
-  minetest.log('action', modname .. ": mysql_base disabled, not loading mod")
+  LogI("mysql_base disabled, not loading mod")
   return
 end
 
 local singleplayer = minetest.is_singleplayer() -- Caching is OK since you can't open a game to
 -- multiplayer unless you restart it.
 if not minetest.setting_get(modname .. '.enable_singleplayer') and singleplayer then
-  minetest.log('action', modname .. ": Not adding auth handler because of singleplayer game")
+  LogI("Not adding auth handler because of singleplayer game")
   return
 end
 
-enabled = true
+thismod.enabled = true
 
+local LogV = function() end
 do
   local get = mysql_base.mkget(modname)
+  if get('verbose') == 'true' then
+    LogI("Verbose logging enabled")
+    LogV = mysql_base.mklog('verbose', modname)
+  end
 
   local conn, dbname = mysql_base.conn, mysql_base.dbname
 
   local tables = {}
+  thismod.tables = tables
   do -- Tables and schema settings
     local t_auths = get('db.tables.auths')
     if type(t_auths) == 'table' then
@@ -72,66 +81,64 @@ do
   if not mysql_base.table_exists(tables.auths.name) then
     -- Auth table doesn't exist, create it
     local S = tables.auths.schema
-    conn:query('CREATE TABLE ' .. tables.auths.name .. ' (' ..
-      S.userid  .. ' ' .. S.userid_type .. ' NOT NULL AUTO_INCREMENT,' ..
-      S.username .. ' ' .. S.username_type .. ' NOT NULL,' ..
-      S.password .. ' ' .. S.password_type .. ' NOT NULL,' ..
-      S.privs .. ' ' .. S.privs_type .. ' NOT NULL,' ..
-      S.lastlogin .. ' ' .. S.lastlogin_type .. ',' ..
-      'PRIMARY KEY (' .. S.userid .. '),' ..
-      'UNIQUE (' .. S.username .. ')' ..
-    ')')
-    minetest.log('action', modname .. " created table '" .. dbname .. "." .. tables.auths.name ..
-      "'")
+    mysql_base.create_table(tables.auths.name, {
+      columns = {
+        {S.userid, S.userid_type, notnull = true, autoincrement = true},
+        {S.username, S.username_type, notnull = true},
+        {S.password, S.password_type, notnull = true},
+        {S.privs, S.privs_type, notnull = true},
+        {S.lastlogin, S.lastlogin_type},
+      },
+      pkey = {S.userid},
+      unique = {S.username},
+    })
+    LogI("Created table '" .. dbname .. "." .. tables.auths.name .. "'")
     auth_table_created = true
   end
 
   local S = tables.auths.schema
-  local get_auth_stmt = conn:prepare('SELECT ' .. S.userid .. ',' .. S.password .. ',' .. S.privs ..
-    ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name .. ' WHERE ' .. S.username .. '=?')
+  local get_auth_stmt, get_auth_params, get_auth_results = mysql_base.prepare_select(
+    tables.auths.name, {
+    {S.userid, S.userid_type},
+    {S.password, S.password_type},
+    {S.privs, S.privs_type},
+    {S.lastlogin, S.lastlogin_type}},
+    S.username .. '=?', {S.username_type})
   thismod.get_auth_stmt = get_auth_stmt
-  local get_auth_params = get_auth_stmt:bind_params({S.username_type})
-  thismod.get_auth_params = get_auth_params
-  local get_auth_results = get_auth_stmt:bind_result({S.userid_type, S.password_type, S.privs_type,
-    S.lastlogin_type})
-  thismod.get_auth_results = get_auth_results
 
-  local create_auth_stmt = conn:prepare('INSERT INTO ' .. tables.auths.name .. '(' .. S.username ..
-    ',' .. S.password .. ',' .. S.privs .. ',' .. S.lastlogin .. ') VALUES (?,?,?,?)')
+  local create_auth_stmt, create_auth_params = mysql_base.prepare_insert(
+    tables.auths.name, {
+    {S.username, S.username_type},
+    {S.password, S.password_type},
+    {S.privs, S.privs_type},
+    {S.lastlogin, S.lastlogin_type},
+  })
   thismod.create_auth_stmt = create_auth_stmt
-  local create_auth_params = create_auth_stmt:bind_params({S.username_type, S.password_type,
-    S.privs_type, S.lastlogin_type})
   thismod.create_auth_params = create_auth_params
+  local max_name_len = tonumber(create_auth_params.buffer[0].buffer_length)
+  local max_pass_len = tonumber(create_auth_params.buffer[1].buffer_length)
 
-  local delete_auth_stmt = conn:prepare('DELETE FROM ' .. tables.auths.name .. ' WHERE ' ..
-    S.username .. '=?')
-  thismod.delete_auth_stmt = delete_auth_stmt
-  local delete_auth_params = delete_auth_stmt:bind_params({S.username_type})
-  thismod.delete_auth_params = delete_auth_params
+  local delete_auth_stmt, delete_auth_params = mysql_base.prepare_delete(tables.auths.name,
+    S.username .. '=?', {S.username_type})
 
-  local set_password_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.password ..
-    '=? WHERE ' .. S.username .. '=?')
-  thismod.set_password_stmt = set_password_stmt
-  local set_password_params = set_password_stmt:bind_params({S.password_type, S.username_type})
-  thismod.set_password_params = set_password_params
+  local set_password_stmt, set_password_params = mysql_base.prepare_update(tables.auths.name,
+    {{S.password, S.password_type}},
+    S.username .. '=?', {S.username_type})
 
-  local set_privileges_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' .. S.privs ..
-    '=? WHERE ' .. S.username .. '=?')
-  thismod.set_privileges_stmt = set_privileges_stmt
-  local set_privileges_params = set_privileges_stmt:bind_params({S.privs_type, S.username_type})
-  thismod.set_privileges_params = set_privileges_params
+  local set_privileges_stmt, set_privileges_params = mysql_base.prepare_update(tables.auths.name,
+    {{S.privs, S.privs_type}},
+    S.username .. '=?', {S.username_type})
+  local max_privs_len = tonumber(set_privileges_params.buffer[0].buffer_length)
 
-  local record_login_stmt = conn:prepare('UPDATE ' .. tables.auths.name .. ' SET ' ..
-    S.lastlogin .. '=? WHERE ' .. S.username .. '=?')
-  thismod.record_login_stmt = record_login_stmt
-  local record_login_params = record_login_stmt:bind_params({S.lastlogin_type, S.username_type})
-  thismod.record_login_params = record_login_params
+  local record_login_stmt, record_login_params = mysql_base.prepare_update(tables.auths.name,
+    {{S.lastlogin, S.lastlogin_type}},
+    S.username .. '=?', {S.username_type})
 
   local enumerate_auths_query = 'SELECT ' .. S.username .. ',' .. S.password .. ',' .. S.privs ..
     ',' .. S.lastlogin .. ' FROM ' .. tables.auths.name
   thismod.enumerate_auths_query = enumerate_auths_query
 
-  if auth_table_created and get('import_auth_txt_on_table_create') ~= 'false' then
+  if auth_table_created and get('import_auth_txt_on_table_create') == 'true' then
     if not thismod.import_auth_txt then
       dofile(modpath .. '/auth_txt_import.lua')
     end
@@ -141,10 +148,14 @@ do
   thismod.auth_handler = {
     get_auth = function(name)
       assert(type(name) == 'string')
+      if name:len() > max_name_len then
+        LogE("get_auth(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return nil
+      end
       get_auth_params:set(1, name)
       local success, msg = pcall(get_auth_stmt.exec, get_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": get_auth(" .. name .. ") failed: " .. msg)
+        LogE("get_auth(" .. name .. ") failed: " .. msg)
         return nil
       end
       get_auth_stmt:store_result()
@@ -153,12 +164,16 @@ do
         return nil
       end
       while get_auth_stmt:fetch() do
-        minetest.log('warning', modname .. ": get_auth(" .. name .. "): multiples lines were" ..
-          " returned")
+        error(modname .. ": get_auth(" .. name .. "): multiples lines were returned")
       end
       local userid, password, privs_str, lastlogin = get_auth_results:get(1),
         get_auth_results:get(2), get_auth_results:get(3), get_auth_results:get(4)
-      local admin = (name == minetest.setting_get("name"))
+      local admin
+      if minetest.settings then
+        admin = (name == minetest.settings:get("name"))
+      else
+        admin = (name == minetest.setting_get("name"))
+      end
       local privs
       if singleplayer or admin then
         privs = {}
@@ -175,6 +190,8 @@ do
       else
         privs = minetest.string_to_privs(privs_str)
       end
+      LogV("get_auth(" .. name .. ") -> {userid:" .. userid .. ", privileges: " ..
+           table.concat(privs, ',') .. "}")
       return {
         userid = userid,
         password = password,
@@ -185,35 +202,53 @@ do
     create_auth = function(name, password, reason)
       assert(type(name) == 'string')
       assert(type(password) == 'string')
-      minetest.log('info', modname .. " creating player '"..name.."'" .. (reason or ""))
+      LogV("create_auth(" .. name .. ", ###" .. (reason and (", " .. reason) or "") .. ")")
+      LogI("Creating player '" .. name .. "'" .. (reason or ""))
+      if name:len() > max_name_len then
+        LogE("create_auth(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return false
+      end
+      if password:len() > max_pass_len then
+        LogE("create_auth(" .. name .. ") failed: password too long (max " .. max_pass_len .. ")")
+        return false
+      end
       create_auth_params:set(1, name)
       create_auth_params:set(2, password)
-      create_auth_params:set(3, minetest.setting_get("default_privs"))
+      if minetest.settings then
+        create_auth_params:set(3, minetest.settings:get("default_privs"))
+      else
+        create_auth_params:set(3, minetest.setting_get("default_privs"))
+      end
       create_auth_params:set(4, math.floor(os.time()))
       local success, msg = pcall(create_auth_stmt.exec, create_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": create_auth(" .. name .. ") failed: " .. msg)
+        LogE("create_auth(" .. name .. ") failed: " .. msg)
         return false
       end
       if create_auth_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": create_auth(" .. name .. ") failed: affected row" ..
-          " count is " .. create_auth_stmt:affected_rows() .. ", expected 1")
+        LogE("create_auth(" .. name .. ") failed: affected row count is " ..
+             create_auth_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
     end,
     delete_auth = function(name)
       assert(type(name) == 'string')
-      minetest.log('info', modname .. " deleting player '"..name.."'")
+      LogV("delete_auth(" .. name .. ")")
+      LogI("Deleting player '"..name.."'")
+      if name:len() > max_name_len then
+        LogE("delete_auth(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return false
+      end
       delete_auth_params:set(1, name)
       local success, msg = pcall(delete_auth_stmt.exec, delete_auth_stmt)
       if not success then
-        minetest.log('error', modname .. ": delete_auth(" .. name .. ") failed: " .. msg)
+        LogE("delete_auth(" .. name .. ") failed: " .. msg)
         return false
       end
       if delete_auth_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": delete_auth(" .. name .. ") failed: affected row" ..
-          " count is " .. delete_auth_stmt:affected_rows() .. ", expected 1")
+        LogE("delete_auth(" .. name .. ") failed: affected row count is " ..
+             delete_auth_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
@@ -221,20 +256,29 @@ do
     set_password = function(name, password)
       assert(type(name) == 'string')
       assert(type(password) == 'string')
+      LogV("set_password(" .. name .. ", ###)")
+      if name:len() > max_name_len then
+        LogE("create_auth(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return false
+      end
+      if password:len() > max_pass_len then
+        LogE("create_auth(" .. name .. ") failed: password too long (max " .. max_pass_len .. ")")
+        return false
+      end
       if not thismod.auth_handler.get_auth(name) then
         return thismod.auth_handler.create_auth(name, password, " because set_password was requested")
       else
-        minetest.log('info', modname .. " setting password of player '" .. name .. "'")
+        LogI("Setting password of player '" .. name .. "'")
         set_password_params:set(1, password)
         set_password_params:set(2, name)
         local success, msg = pcall(set_password_stmt.exec, set_password_stmt)
         if not success then
-          minetest.log('error', modname .. ": set_password(" .. name .. ") failed: " .. msg)
+          LogE("set_password(" .. name .. ") failed: " .. msg)
           return false
         end
         if set_password_stmt:affected_rows() ~= 1 then
-          minetest.log('error', modname .. ": set_password(" .. name .. ") failed: affected row" ..
-            " count is " .. set_password_stmt:affected_rows() .. ", expected 1")
+          LogE("set_password(" .. name .. ") failed: affected row  count is " ..
+               set_password_stmt:affected_rows() .. ", expected 1")
           return false
         end
         return true
@@ -243,11 +287,23 @@ do
     set_privileges = function(name, privileges)
       assert(type(name) == 'string')
       assert(type(privileges) == 'table')
-      set_privileges_params:set(1, minetest.privs_to_string(privileges))
+      local privstr = minetest.privs_to_string(privileges)
+      LogV("set_privileges(" .. name .. ", {" .. table.concat(privileges, ', ') .. "}) [" ..
+           privstr .. "]")
+      if name:len() > max_name_len then
+        LogE("set_privileges(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return false
+      end
+      if privstr:len() > max_privs_len then
+        LogE("create_auth(" .. name .. ") failed: priv string too long (max " ..
+             max_privs_len .. ")")
+        return false
+      end
+      set_privileges_params:set(1, privstr)
       set_privileges_params:set(2, name)
       local success, msg = pcall(set_privileges_stmt.exec, set_privileges_stmt)
       if not success then
-        minetest.log('error', modname .. ": set_privileges(" .. name .. ") failed: " .. msg)
+        LogE("set_privileges(" .. name .. ") failed: " .. msg)
         return false
       end
       minetest.notify_authentication_modified(name)
@@ -258,21 +314,27 @@ do
     end,
     record_login = function(name)
       assert(type(name) == 'string')
+      LogV("record_login(" .. name .. ")")
+      if name:len() > max_name_len then
+        LogE("set_privileges(" .. name .. ") failed: name too long (max " .. max_name_len .. ")")
+        return false
+      end
       record_login_params:set(1, math.floor(os.time()))
       record_login_params:set(2, name)
       local success, msg = pcall(record_login_stmt.exec, record_login_stmt)
       if not success then
-        minetest.log('error', modname .. ": record_login(" .. name .. ") failed: " .. msg)
+        LogE("record_login(" .. name .. ") failed: " .. msg)
         return false
       end
       if record_login_stmt:affected_rows() ~= 1 then
-        minetest.log('error', modname .. ": record_login(" .. name .. ") failed: affected row" ..
-          " count is " .. record_login_stmt:affected_rows() .. ", expected 1")
+        LogE("record_login(" .. name .. ") failed: affected row count is " ..
+             record_login_stmt:affected_rows() .. ", expected 1")
         return false
       end
       return true
     end,
     enumerate_auths = function()
+      LogV("enumerate_auths()")
       conn:query(enumerate_auths_query)
       local res = conn:store_result()
       return function()
@@ -292,7 +354,7 @@ do
 end
 
 minetest.register_authentication_handler(thismod.auth_handler)
-minetest.log('action', modname .. ": Registered auth handler")
+LogI("Registered auth handler")
 
 mysql_base.register_on_shutdown(function()
   thismod.get_auth_stmt:free_result()

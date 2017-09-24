@@ -8,7 +8,7 @@ function thismod.import_auth_txt()
   local auth_file_path = minetest.get_worldpath() .. '/auth.txt'
   local create_auth_stmt = thismod.create_auth_stmt
   local create_auth_params = thismod.create_auth_params
-  local conn = thismod.conn
+  local conn = mysql_base.conn
   local file, errmsg = io.open(auth_file_path, 'rb')
   if not file then
     minetest.log('action', modname .. ": " .. auth_file_path .. " could not be opened for reading" ..
