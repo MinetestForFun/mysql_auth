@@ -1,14 +1,14 @@
-# mysql_auth
+# MySQL Authentication
 
 Plug Minetest's auth mechanism into a MySQL database.
 
-# Configuration
+## Configuration
 
 First, if mod security is enabled (`secure.enable_security = true`), this mod must be added as
 a trusted mod (in the `secure.trusted_mods` config entry). There is **no** other solution to
 make it work under mod security.
 
-By default `mysql_auth` doesn't run in singleplayer. This can be overriden by setting
+By default, `mysql_auth` doesn't run in singleplayer. This can be overriden by setting
 `mysql_auth.enable_singleplayer` to `true`.
 
 Configuration may be done as regular Minetest settings entries, or using a config file, allowing
@@ -37,7 +37,7 @@ db.db = nil -- <== Setting this is required
 ### Lua table config file
 
 Connection options are passed as a table through the `db.connopts` entry.
-Its format must be the same as [LuaPower's MySQL module `mysql.connect(options_t)` function][mycn],
+It's format must be the same as [LuaPower's MySQL module `mysql.connect(options_t)` function][mycn],
 that is (all members are optional);
 
 ```lua
@@ -113,9 +113,9 @@ mysql_auth.db.db = minetest
 mysql_auth.db.tables.auth.name = skyblock_auths
 ```
 
-# License
+## License
 
-`mysql_auth` is licensed under [LGPLv3](https://www.gnu.org/licenses/lgpl.html).
+`mysql_auth` is licensed under [GNU LGPLv3](https://www.gnu.org/licenses/lgpl.html).
 
 Using the Public Domain-licensed LuaPower `mysql` module.
 

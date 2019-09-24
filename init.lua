@@ -16,7 +16,7 @@ end
 
 local singleplayer = minetest.is_singleplayer() -- Caching is OK since you can't open a game to
 -- multiplayer unless you restart it.
-if not minetest.setting_get(modname .. '.enable_singleplayer') and singleplayer then
+if not minetest.settings:get(modname .. '.enable_singleplayer') and singleplayer then
   LogI("Not adding auth handler because of singleplayer game")
   return
 end
