@@ -37,7 +37,7 @@ db.db = nil -- <== Setting this is required
 ### Lua table config file
 
 Connection options are passed as a table through the `db.connopts` entry.
-It's format must be the same as [LuaPower's MySQL module `mysql.connect(options_t)` function][mycn],
+Its format must be the same as [LuaPower's MySQL module `mysql.connect(options_t)` function][mycn],
 that is (all members are optional);
 
 ```lua
