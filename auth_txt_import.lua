@@ -1,6 +1,4 @@
 local modname = minetest.get_current_modname()
-local modpath = minetest.get_modpath(modname) 
-
 local thismod = _G[modname]
 
 function thismod.import_auth_txt()
