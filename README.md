@@ -1,4 +1,5 @@
 # MySQL Authentication
+[![Build Status](https://travis-ci.org/MinetestForFun/mysql_auth.svg)](https://travis-ci.org/MinetestForFun/mysql_auth)
 
 Plug Minetest's auth mechanism into a MySQL database.
 
